@@ -59,10 +59,11 @@ parser.add_argument('-b', '--beats_per_measure', type=int, default=4,
                     help='Time signature / number of quarter notes per measure')
 parser.add_argument('-s', '--shortest_note', default='1/16', choices=SHORTEST_NOTES.keys(),
                     help='Shortest possible note')
-parser.add_argument('-i', '--instrument_id', type=int, default=27, help='Instrument id for GP5 file')
+parser.add_argument('-i', '--instrument_id', type=int, default=20, help='Instrument id for GP5 file')
 parser.add_argument('--track_title', help='Track title for GP5 file')
 parser.add_argument('-p', '--path_to_gp5', help='Output path of GP5 file')
 parser.add_argument('-v', '--verbose', action='store_true', help='Print verbose output')
+
 
 args = parser.parse_args()
 assert os.path.isfile(args.path_to_wav), 'Recording file not found'
@@ -70,12 +71,25 @@ assert args.tempo == -1 or args.tempo > 0, 'Tempo is invalid, should be -1 or > 
 assert args.beats_per_measure > 0, 'Beats per measure is invalid, should be > 0'
 assert args.instrument_id > 0, 'Instrument ID is invalid, should be > 0'
 
+
+
 # PIPELINE
+
+# convert music to mono track
+from pydub import AudioSegment
+sound = AudioSegment.from_wav(args.path_to_wav)
+sound = sound.set_channels(1)
+sound.export(args.path_to_wav, format="wav")
+
+
 print('Detecting onsets')
 onset_detector = CnnOnsetDetector.from_zip(
     os.path.join(args.model_dir, 'onset_detection', 'ds1-4_100-perc.zip')
 )
+
 onset_times_seconds = onset_detector.predict_onsets(args.path_to_wav)
+# print(onset_times_seconds)
+# print(len(onset_times_seconds))
 
 print('Detecting pitches')
 if args.musical_texture == 'mono':
@@ -85,6 +99,10 @@ else:
         os.path.join(args.model_dir, 'pitch_detection', 'cqt_ds12391011_100-perc_proba-thresh-0.3.zip')
     )
 list_of_pitch_sets = pitch_detector.predict_pitches(args.path_to_wav, onset_times_seconds)
+# print(list_of_pitch_sets)
+# print(len(list_of_pitch_sets))
+
+
 
 print('Detecting strings and frets')
 string_fret_detector = SequenceStringFretDetection(TUNING, N_FRETS)
@@ -110,7 +128,32 @@ beat_transformer = SimpleBeatTransformer(shortest_note=SHORTEST_NOTES[args.short
 beats = beat_transformer.transform(args.path_to_wav, onset_times_seconds,
                                    list_of_string_lists, list_of_fret_lists, tempo)
 
+
+"""
+    beats: list
+        List of lists (each representing a measure) of tuples (each representing a track) with two
+        lists of Beat objects. The first list is played on MIDI channel 1, the second on channel 2
+        [  # measures
+            [  # measure, tracks
+                (  # track, 2 voices
+                    [  # voice 1, beats (onsets with corresponding notes) go here
+
+                    ],
+                    [] # voice 2 is empty
+                ),
+            ],
+        ]
+"""
+beat_list = []
+for measures in beats:
+    beat_list+=measures[0][0]
+
+note_lengths = []
+for i in beat_list:
+    note_lengths.append(i.duration)
+
 print('Exporting to GP5')
+
 measures = []
 for i, measure in enumerate(beats):
     if i == 0:
@@ -139,4 +182,42 @@ if args.path_to_gp5 is None:
 else:
     path_to_gp5 = args.path_to_gp5
 
+path_to_midi = recording_name + '.mid'
+
 write_gp5(measures, tracks, beats, tempo=tempo, outfile=path_to_gp5, header=Header(title=track_title))
+
+
+print('Exporting to Midi file')
+
+from midiutil import MIDIFile
+
+
+track    = 0
+channel  = 0
+time     = 0    # In beats
+duration = 1    # In beats
+#tempo    = 60   # In BPM
+volume   = 100  # 0-127, as per the MIDI standard
+
+MyMIDI = MIDIFile(1)  # One track, defaults to format 1 (tempo track is created
+                      # automatically)
+MyMIDI.addTempo(track, time, tempo)
+
+note_counter = 0
+for i, pitches in enumerate(list_of_pitch_sets):
+    for pitch in pitches:
+        if note_counter<len(onset_times_seconds)-1:
+            duration = onset_times_seconds[note_counter + 1] - onset_times_seconds[note_counter]
+        else:
+            duration = 1
+
+        MyMIDI.addNote(track, channel, pitch, onset_times_seconds[note_counter],duration , volume)
+        note_counter+=1
+
+
+#print("note counter:",note_counter)
+#print("note_lengths", len(note_lengths))
+
+with open(path_to_midi, "wb") as output_file:
+    MyMIDI.writeFile(output_file)
+

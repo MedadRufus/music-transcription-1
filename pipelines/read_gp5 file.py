@@ -3,8 +3,7 @@
 
 import guitarpro
 
-song = guitarpro.parse('Lullaby.gp5')
-
+song = guitarpro.parse('eqt-chromo-sc.gp5')
 
 
 # for track in song.tracks:
