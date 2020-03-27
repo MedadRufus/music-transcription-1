@@ -1,14 +1,13 @@
 # MuTr
-Transcribe guitar recordings in WAVE format to notes and tablatures (Guitar Pro 5 format).  
+Transcribe guitar recordings in WAVE format to Midi format.  
 Pipeline steps:
 - Onset detection
 - Polyphonic pitch detection
 - String and fret detection
 - Tempo detection
 - Mapping of onset times to discrete notes in measures
-- GP5 export
+- Midi export
   
-Also offers functionality to compare GP5 files and convert MIDI files to GP5.  
 The system is implemented in Python 3.5.
 
 ## Installation
