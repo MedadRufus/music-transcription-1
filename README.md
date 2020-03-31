@@ -42,25 +42,3 @@ Transcribe a recording using monophonic pitch detection and a custom output path
 ```
 python guitar_pipeline.py ..\example_recordings\instrumental_lead.wav -m mono -p instrumental_lead.mono.gp5
 ```
-Compare two GP5 files:
-```
-python compare_gp5.py instrumental_lead.gp5 instrumental_lead.mono.gp5 --outfile instrumental_lead_poly_vs_mono.gp5
-```
-The output is another GP5 file with three different tracks, one for common notes and two more describing the notes in the differing regions for each file.  
-  
-Convert a MIDI file with drums to GP5:
-```
-python midi_transcription.py ..\example_recordings\lotrify_laura_drums_4-4.mid --force_drums
-```
-To see what other options guitar_pipeline.py has to offer:
-```
-python guitar_pipeline.py -h
-```
-To see what other options compare_gp5.py has to offer:
-```
-python compare_gp5.py -h
-```
-To see what other options midi_transcription.py has to offer:
-```
-python midi_transcription.py -h
-```
