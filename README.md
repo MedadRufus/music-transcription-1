@@ -17,7 +17,7 @@ This is currently only tested for Windows 10, but other platforms should work as
 3. Create and activate a new environment containing all relevant modules using the following commands in an Anaconda prompt:
    ```
    conda env create -f $INSTALLDIR/conda_env.yml
-   activate music_transcription_3
+   activate music_transcription
    ```
 4. Change the following Keras attributes in the file %USERPROFILE%/.keras/keras.json ($HOME/.keras/keras.json for \*nix):
    ```
